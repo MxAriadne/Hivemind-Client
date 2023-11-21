@@ -49,7 +49,10 @@ public class FileClient extends Application {
 			try (Socket socket = new Socket(ipAddress, port);
 				 BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
 
-				String receivedFileName = "received_hello.txt";
+				// Read the file name from the server
+				String receivedFileName = in.readLine();
+				System.out.println("Receiving file: " + receivedFileName);
+
 				try (PrintWriter writer = new PrintWriter(receivedFileName)) {
 					String line;
 					while ((line = in.readLine()) != null) {
@@ -64,4 +67,5 @@ public class FileClient extends Application {
 			}
 		}).start();
 	}
+
 }
