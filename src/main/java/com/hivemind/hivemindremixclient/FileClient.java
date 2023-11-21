@@ -48,27 +48,32 @@ public class FileClient extends Application {
 
 	private void receiveFile(String ipAddress, int port, Label statusLabel) {
 		try (Socket socket = new Socket(ipAddress, port);
-			 BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
+			 DataInputStream dataInputStream = new DataInputStream(socket.getInputStream());
+			 FileOutputStream fileOutputStream = new FileOutputStream("received_file.txt");
+			 BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream)) {
 
-			// Read the file name from the server
-			String receivedFileName = in.readLine();
-			if (receivedFileName != null) {
+			// Read the file name length
+			int fileNameLength = dataInputStream.read();
+			if (fileNameLength > 0) {
+				// Read the file name
+				byte[] fileNameBytes = new byte[fileNameLength];
+				dataInputStream.readFully(fileNameBytes);
+				String receivedFileName = new String(fileNameBytes);
+
 				System.out.println("Receiving file: " + receivedFileName);
 
-				try (PrintWriter writer = new PrintWriter(receivedFileName);
-					 BufferedWriter bufferedWriter = new BufferedWriter(writer)) {
+				byte[] buffer = new byte[1024];
+				int bytesRead;
 
-					String line;
-					while ((line = in.readLine()) != null) {
-						bufferedWriter.write(line);
-						bufferedWriter.newLine();
-					}
-
-					System.out.println("File received and saved as " + receivedFileName);
-
-					// Update UI or perform any other actions as needed
-					statusLabel.setText("Received file: " + receivedFileName);
+				// Receive file content
+				while ((bytesRead = socket.getInputStream().read(buffer)) != -1) {
+					bufferedOutputStream.write(buffer, 0, bytesRead);
 				}
+
+				System.out.println("File received and saved as " + receivedFileName);
+
+				// Update UI or perform any other actions as needed
+				statusLabel.setText("Received file: " + receivedFileName);
 			} else {
 				// No new files at the moment
 				System.out.println("No new files.");
@@ -78,4 +83,5 @@ public class FileClient extends Application {
 			e.printStackTrace();
 		}
 	}
+
 }
