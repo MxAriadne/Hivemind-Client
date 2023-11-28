@@ -61,7 +61,7 @@
                         <id>default-cli</id>
                         <configuration>
                             <mainClass>
-                                com.hivemind.hivemindremixclient/com.hivemind.hivemindremixclient.HelloApplication
+                                com.hivemind.hivemindremixclient.FileClient
                             </mainClass>
                             <launcher>app</launcher>
                             <jlinkZipName>app</jlinkZipName>

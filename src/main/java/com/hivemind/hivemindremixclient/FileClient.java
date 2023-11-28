@@ -2,9 +2,13 @@ package com.hivemind.hivemindremixclient;
 
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
 import java.io.*;
@@ -17,48 +21,71 @@ import java.util.Arrays;
 
 public class FileClient extends Application {
 
-	private static final String SERVER_IP = "192.168.68.103";
-	private static final int SERVER_PORT = 8080;
+	//Console themeing for easy diag
+	public static final String GRAY = "\033[1;90m";
+	public static final String RED = "\033[1;91m";
+	public static final String GREEN = "\033[1;92m";
+	public static final String SUCCESS = GREEN + "SUCCESS: " + GRAY;
+	public static final String FAILURE = RED + "FAILURE: " + GRAY;
+
+	private String ip;
+	private int port;
 
 	public static void main(String[] args) {
 		launch(args);
 	}
 
 	@Override
-	public void start(Stage primaryStage) {
-		primaryStage.setTitle("File Client");
+	public void start(Stage stage) {
+		stage.setTitle("Hivemind Client");
 
-		Label statusLabel = new Label("Waiting for files...");
+		TextField ipField = new TextField("Enter server IP address");
+		ipField.setAlignment(Pos.CENTER);
+		ipField.setMaxWidth(200);
 
-		VBox vbox = new VBox(10);
-		vbox.getChildren().addAll(statusLabel);
+		TextField portField = new TextField("Enter server port");
+		portField.setAlignment(Pos.CENTER);
+		portField.setMaxWidth(200);
 
-		Scene scene = new Scene(vbox, 300, 150);
-		primaryStage.setScene(scene);
+		Button startClient = new Button("Start Client");
+		Label statusLabel = new Label("");
 
-		primaryStage.show();
+		VBox vbox = new VBox(30);
+		vbox.setStyle("-fx-background-color: #301934;");
+		vbox.setAlignment(Pos.CENTER);
+		vbox.getChildren().addAll(ipField, portField, startClient, statusLabel);
 
-		// Start the continuous file receiving loop in a separate thread
-		new Thread(() -> {
-			while (true) {
-				receiveFile(SERVER_IP, SERVER_PORT);
-				try {
-					// Sleep for a while before checking for new files again
-					Thread.sleep(5000); // 5 seconds (adjust as needed)
-				} catch (InterruptedException e) {
-					e.printStackTrace();
+		Scene scene = new Scene(vbox, 300, 250);
+		stage.setScene(scene);
+		stage.show();
+
+		startClient.setOnAction(e -> {
+			this.ip = ipField.getText();
+			this.port = Integer.parseInt(portField.getText());
+			statusLabel.setText("Now receiving files!");
+
+			// Start the continuous file receiving loop in a separate thread
+			new Thread(() -> {
+				while (true) {
+					receiveFile(ip, port);
+					try {
+						// Sleep for a while before checking for new files again
+						Thread.sleep(5000); // 5 seconds (adjust as needed)
+					} catch (InterruptedException exception) {
+						System.out.println(FAILURE + "The thread died!");
+					}
 				}
-			}
-		}).start();
+			}).start();
+		});
 	}
 
 	private void deleteFile(byte[] fileNameBytes) {
 		String deletedFileName = new String(fileNameBytes, StandardCharsets.UTF_8);
 		File deletedFile = new File(deletedFileName);
 		if (deletedFile.delete()) {
-			System.out.println("File '" + deletedFileName + "' deleted on client.");
+			System.out.println(SUCCESS + "File '" + deletedFileName + "' deleted on client!");
 		} else {
-			System.out.println("Failed to delete file '" + deletedFileName + "' on client.");
+			System.out.println(FAILURE + "Failed to delete file '" + deletedFileName + "' on client. (File likely does not exist!)");
 		}
 
 	}
@@ -73,33 +100,24 @@ public class FileClient extends Application {
 			switch (dataInputStream.readByte()) {
 				case 1 -> isDelete = true;
 				case 2 -> isFolder = true;
-				default -> { System.out.println("Weird error? No flag sent by server."); }
+				default -> { System.out.println(FAILURE + "Weird error? No flag sent by server."); }
 			}
-
-			System.out.println("isDelete: " + isDelete);
-			System.out.println("isFolder: " + isFolder);
 
 			// Read the file name length
 			int fileNameLength = dataInputStream.read();
-			System.out.println("Length: " + fileNameLength);
 			byte[] fileNameBytes = new byte[fileNameLength];
-			System.out.println("Filename Bytes: " + Arrays.toString(fileNameBytes));
 			dataInputStream.readFully(fileNameBytes);
 			String receivedFileName = new String(fileNameBytes, StandardCharsets.UTF_8);
-			System.out.println("Received Filename: " + receivedFileName);
 
 			if (isDelete) {
 				deleteFile(fileNameBytes);
 			} else if (isFolder) {
-				System.out.println("Creating dir: " + receivedFileName);
 				Path newDirectory = Paths.get(receivedFileName);
 
 				// This also creates parent dirs if not exists
 				Files.createDirectories(newDirectory);
+				System.out.println(SUCCESS + "Directory " + receivedFileName + " was created!");
 			} else {
-
-				System.out.println("Receiving file: " + receivedFileName);
-
 				FileOutputStream fileOutputStream = new FileOutputStream(receivedFileName);
 				BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream);
 
@@ -113,12 +131,12 @@ public class FileClient extends Application {
 
 				bufferedOutputStream.close();
 
-				System.out.println("File received and saved as " + receivedFileName);
+				System.out.println(SUCCESS + "File " + receivedFileName + " was saved!");
+
 			}
 		} catch (IOException e) {
-			Stage stage = new Stage();
-			start(stage);
-			//e.printStackTrace();
+			System.out.println(FAILURE + "Failed to connect to server!");
+
 		}
 	}
 

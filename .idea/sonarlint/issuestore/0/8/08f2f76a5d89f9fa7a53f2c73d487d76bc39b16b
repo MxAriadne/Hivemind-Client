@@ -1,0 +1,15 @@
+
+t
+java:S2095z"RUse try-with-resources or close this "BufferedOutputStream" in a "finally" clause.(ÒÆ×›øÿÿÿÿ8¡àîŸÁ1
+€
+java:S2142J"^Either re-interrupt this method or rethrow the "InterruptedException" that can be caught here.(ß•Äøÿÿÿÿ8»àîŸÁ1
+k
+java:S4042U"NUse "java.nio.file.Files#delete" here for better messages on error conditions.(¿ˆ£ã8ÀàîŸÁ1
+9
+java:S6205g"Remove this redundant block.(®±ù´8ÄàîŸÁ1
+Z
+java:S1128"8Remove this unused import 'javafx.application.Platform'.(§“óùÿÿÿÿ8ÈàîŸÁ1
+R
+java:S1128"5Remove this unused import 'javafx.scene.paint.Color'.(Ïî£à8ÈàîŸÁ1
+O
+java:S1128"-Remove this unused import 'java.util.Arrays'.(î–˜Éüÿÿÿÿ8ÉàîŸÁ1
