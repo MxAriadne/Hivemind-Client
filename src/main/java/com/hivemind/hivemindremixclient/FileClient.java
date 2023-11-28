@@ -1,6 +1,7 @@
 package com.hivemind.hivemindremixclient;
 
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
@@ -8,6 +9,11 @@ import javafx.stage.Stage;
 
 import java.io.*;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Arrays;
 
 public class FileClient extends Application {
 
@@ -35,7 +41,7 @@ public class FileClient extends Application {
 		// Start the continuous file receiving loop in a separate thread
 		new Thread(() -> {
 			while (true) {
-				receiveFile(SERVER_IP, SERVER_PORT, statusLabel);
+				receiveFile(SERVER_IP, SERVER_PORT);
 				try {
 					// Sleep for a while before checking for new files again
 					Thread.sleep(5000); // 5 seconds (adjust as needed)
@@ -46,42 +52,75 @@ public class FileClient extends Application {
 		}).start();
 	}
 
-	private void receiveFile(String ipAddress, int port, Label statusLabel) {
+	private void deleteFile(byte[] fileNameBytes) {
+		String deletedFileName = new String(fileNameBytes, StandardCharsets.UTF_8);
+		File deletedFile = new File(deletedFileName);
+		if (deletedFile.delete()) {
+			System.out.println("File '" + deletedFileName + "' deleted on client.");
+		} else {
+			System.out.println("Failed to delete file '" + deletedFileName + "' on client.");
+		}
+
+	}
+
+	private void receiveFile(String ipAddress, int port) {
 		try (Socket socket = new Socket(ipAddress, port);
-			 DataInputStream dataInputStream = new DataInputStream(socket.getInputStream());
-			 FileOutputStream fileOutputStream = new FileOutputStream("received_file.txt");
-			 BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream)) {
+			 DataInputStream dataInputStream = new DataInputStream(socket.getInputStream())) {
+
+			boolean isDelete = false;
+			boolean isFolder = false;
+
+			switch (dataInputStream.readByte()) {
+				case 1 -> isDelete = true;
+				case 2 -> isFolder = true;
+				default -> { System.out.println("Weird error? No flag sent by server."); }
+			}
+
+			System.out.println("isDelete: " + isDelete);
+			System.out.println("isFolder: " + isFolder);
 
 			// Read the file name length
 			int fileNameLength = dataInputStream.read();
-			if (fileNameLength > 0) {
-				// Read the file name
-				byte[] fileNameBytes = new byte[fileNameLength];
-				dataInputStream.readFully(fileNameBytes);
-				String receivedFileName = new String(fileNameBytes);
+			System.out.println("Length: " + fileNameLength);
+			byte[] fileNameBytes = new byte[fileNameLength];
+			System.out.println("Filename Bytes: " + Arrays.toString(fileNameBytes));
+			dataInputStream.readFully(fileNameBytes);
+			String receivedFileName = new String(fileNameBytes, StandardCharsets.UTF_8);
+			System.out.println("Received Filename: " + receivedFileName);
+
+			if (isDelete) {
+				deleteFile(fileNameBytes);
+			} else if (isFolder) {
+				System.out.println("Creating dir: " + receivedFileName);
+				Path newDirectory = Paths.get(receivedFileName);
+
+				// This also creates parent dirs if not exists
+				Files.createDirectories(newDirectory);
+			} else {
 
 				System.out.println("Receiving file: " + receivedFileName);
 
-				byte[] buffer = new byte[1024];
-				int bytesRead;
+				FileOutputStream fileOutputStream = new FileOutputStream(receivedFileName);
+				BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream);
 
-				// Receive file content
-				while ((bytesRead = socket.getInputStream().read(buffer)) != -1) {
+				// Read the file content
+				int bytesRead;
+				byte[] buffer = new byte[1024];
+
+				while ((bytesRead = dataInputStream.read(buffer)) != -1) {
 					bufferedOutputStream.write(buffer, 0, bytesRead);
 				}
 
+				bufferedOutputStream.close();
+
 				System.out.println("File received and saved as " + receivedFileName);
-
-				// Update UI or perform any other actions as needed
-				statusLabel.setText("Received file: " + receivedFileName);
-			} else {
-				// No new files at the moment
-				System.out.println("No new files.");
 			}
-
 		} catch (IOException e) {
-			e.printStackTrace();
+			Stage stage = new Stage();
+			start(stage);
+			//e.printStackTrace();
 		}
 	}
+
 
 }
