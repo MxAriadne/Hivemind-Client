@@ -55,7 +55,7 @@ public class FileClient extends Application {
 		vbox.setAlignment(Pos.CENTER);
 		vbox.getChildren().addAll(ipField, portField, startClient, statusLabel);
 
-		Scene scene = new Scene(vbox, 300, 250);
+		Scene scene = new Scene(vbox, 300, 300);
 		stage.setScene(scene);
 		stage.show();
 
